@@ -1,7 +1,7 @@
 package com.springstudy.bbs.controller;
 
 import java.io.PrintWriter;
-import java.util.List;
+import java.util.Map;
 
 import javax.servlet.http.HttpServletResponse;
 
@@ -10,6 +10,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.springstudy.bbs.domain.Board;
 import com.springstudy.bbs.service.BoardService;
@@ -18,7 +20,7 @@ import com.springstudy.bbs.service.BoardService;
 @Controller
 public class BoardController {
 	
-	/* 인스턴스 필드에 @Autowired annotation을 사용하면 접근지정자가 
+	/* 	인스턴스 필드에 @Autowired annotation을 사용하면 접근지정자가 
 	 * private이고 setter 메서드가 없다 하더라도 문제없이 주입 된다.
 	 * 하지만 우리는 항상 setter 메서드를 준비하는 습관을 들일 수 있도록 하자.
 	 * 
@@ -112,32 +114,7 @@ public class BoardController {
 	 * @RequestMapping 애노테이션이 적용된 메서드의 파라미터에 Model
 	 * 을 지정하면 스프링이 이 메서드를 호출하면서 Model 타입의 객체를 넘겨준다.
 	 * 우리는 Model을 받아 이 객체에 결과 데이터를 담기만 하면 뷰로 전달된다.
-	 **/	
-	@RequestMapping(value= {"/boardList", "/list"}, method=RequestMethod.GET)
-	public String boardList(Model model) {		
-
-		// Service 클래스를 이용해 게시 글 리스트를 가져온다.
-		List<Board> bList = boardService.boardList();
-		
-		/* 파라미터로 받은 모델 객체에 뷰로 보낼 모델을 저장한다.
-		 * 모델에는 도메인 객체나 비즈니스 로직을 처리한 결과를 저장한다. 
-		 **/		
-		model.addAttribute("bList", bList);
-		
-		
-		/* servlet-context.xml에 설정한 ViewResolver에서 prefix와 suffix에
-		 * 지정한 정보를 제외한 뷰 이름을 문자열로 반환하면 된다.
-		 * 
-		 * 아래와 같이 뷰 이름을 반환하면 포워드 되어 제어가 뷰 페이지로 이동한다.
-		 **/
-		return "boardList";
-	}
-
-	/* 게시 글 상세보기 요청을 처리하는 메서드
-	 * 
-	 * 아래는 "/boardDetail"로 들어오는 GET 방식 요청을 처리하는 메서드를 지정한
-	 * 것이다. method 속성을 생략했기 때문에 RequestMethod.GET이 적용된다.
-	 *  
+	 *	
 	 * 스프링은 클라이언트로부터 넘어 오는 요청 파라미터를 받을 수 있는 여러 가지
 	 * 방법을 제공하고 있다. 아래와 같이 Controller 메서드에 요청 파라미터 이름과
 	 * 동일한 이름의 메서드 파라미터를 지정하면 스프링으로부터 요청 파라미터를 넘겨
@@ -165,17 +142,81 @@ public class BoardController {
 	 * @RequestMapping 애노테이션이 적용된 Controller 메서드의 파라미터
 	 * 이름과 요청 파라미터의 이름이 같은 경우 @RequestParam 애노테이션을
 	 * 지정하지 않아도 스프링으로부터 요청 파라미터를 받을 수 있다.
+	 * 
+	 * @RequestMapping 애노테이션이 적용된 메서드의 파라미터와 반환 타입에
+	 * 대한 설명은 boardList() 메서드 주석 위쪽에서 설명한 주석을 참고하기 바란다.
+	 * 
+	 * 아래는 pageNum이라는 요청 파라미터가 없을 경우 required=false를
+	 * 지정해 필수 조건을 주지 않았고 기본 값을  defaultValue="1"로 지정해
+	 * 메서드의 파라미터인 pageNum으로 받을 수 있도록 하였다.
+	 * defaultValue="1"이 메서드의 파라미터인 pageNum에 바인딩될 때
+	 * 스프링이 int 형으로 형 변환하여 바인딩 시켜준다.
+	 **/
+	@RequestMapping(value= {"/boardList", "/list"}, method=RequestMethod.GET)
+	public String boardList(Model model, 
+			@RequestParam(value="pageNum", required=false, defaultValue="1") int pageNum,
+			@RequestParam(value="type", required=false, defaultValue="null")String type,
+			@RequestParam(value="keyword", required=false, defaultValue="null")String keyword) 
+	
+	{
+		
+
+		// Service 클래스를 이용해 게시 글 리스트를 가져온다.
+		Map<String, Object> modelMap = boardService.boardList(pageNum,type,keyword);
+		
+		/* 파라미터로 받은 모델 객체에 뷰로 보낼 모델을 저장한다.
+		 * 모델에는 도메인 객체나 비즈니스 로직을 처리한 결과를 저장한다. 
+		 **/		
+		model.addAllAttributes(modelMap);
+		
+		
+		/* servlet-context.xml에 설정한 ViewResolver에서 prefix와 suffix에
+		 * 지정한 정보를 제외한 뷰 이름을 문자열로 반환하면 된다.
+		 * 
+		 * 아래와 같이 뷰 이름을 반환하면 포워드 되어 제어가 뷰 페이지로 이동한다.
+		 **/
+		return "boardList";
+	}
+	
+	/* 게시 글 상세보기 요청을 처리하는 메서드
+	 * 
+	 * 아래는 "/boardDetail"로 들어오는 GET 방식 요청을 처리하는 메서드를 지정한
+	 * 것이다. method 속성을 생략했기 때문에 RequestMethod.GET이 적용된다.
+	 *
+	 * @RequestMapping 애노테이션이 적용된 메서드의 파라미터와 반환 타입에
+	 * 대한 설명과 @RequestParam에 대한 설명은 boardList() 메서드의 주석을 
+	 * 참고하기 바란다.
+	 * 
+	 * 아래는 pageNum이라는 요청 파라미터가 없을 경우 required=false를
+	 * 지정해 필수 조건을 주지 않았고 기본 값을  defaultValue="1"로 지정해
+	 * 메서드의 파라미터인 pageNum으로 받을 수 있도록 하였다.
+	 * defaultValue="1"이 메서드의 파라미터인 pageNum에 바인딩될 때
+	 * 스프링이 int 형으로 형 변환하여 바인딩 시켜준다.  
 	 **/
 	@RequestMapping("/boardDetail")
-	public String boardDetail(Model model, int no) {
+	public String boardDetail(Model model, int no, 
+			@RequestParam(value="pageNum", required=false, defaultValue="1") int pageNum,
+			@RequestParam(value="type", required=false, defaultValue="null")String type,
+			@RequestParam(value="keyword", required=false, defaultValue="null")String keyword) 
+	{
+		//검색인지아닌지 판단하는 변수
+		boolean searchOption = type.equals("null")||keyword.equals("null") ? false : true;
 		
-		// Service 클래스를 이용해 no에 해당하는 게시 글을 가져온다.
-		Board board = boardService.getBoard(no);
+		/* Service 클래스를 이용해 no에 해당하는 게시 글 하나의 정보를 읽어온다.
+		 * 두 번째 인수에 true를 지정해 게시 글 읽은 횟수를 1 증가 시킨다.
+		 **/
+		Board board = boardService.getBoard(no, true);
 		
 		/* 파라미터로 받은 모델 객체에 뷰로 보낼 모델을 저장한다.
 		 * 모델에는 도메인 객체나 비즈니스 로직을 처리한 결과를 저장한다. 
 		 **/	
 		model.addAttribute("board", board);
+		model.addAttribute("pageNum", pageNum);
+		model.addAttribute("searchOption", searchOption);
+		if(searchOption) {
+			model.addAttribute("type", type);
+			model.addAttribute("keyword", keyword);
+		}
 		
 		/* servlet-context.xml에 설정한 ViewResolver에서 prefix와 suffix에
 		 * 지정한 정보를 제외한 뷰 이름을 문자열로 반환하면 된다.
@@ -184,7 +225,7 @@ public class BoardController {
 		 **/
 		return "boardDetail";
 	}
-
+	
 	/* 게시 글쓰기 폼에서 들어오는 게시 글쓰기 요청을 처리하는 메서드
 	 * 
 	 * @RequestMapping의 ()에 value="/writeProcess", method=RequestMethod.Post를
@@ -208,9 +249,8 @@ public class BoardController {
 	 * 값이 정수형으로 형 변환 할 수 없는 경우 400 에러를 발생 시킨다.
 	 * 
 	 * @RequestMapping 애노테이션이 적용된 메서드의 파라미터와 반환 타입에
-	 * 대한 설명은 setBoardService() 메서드 바로 아래에 있는 주석을 참고하고 
-	 * @RequestParam 애노테이션을 사용해 요청 파라미터를 읽어오는 방법은 
-	 * boardDetail() 메서드의 주석을 참고하기 바란다. 
+	 * 대한 설명과 @RequestParam에 대한 설명은 boardList() 메서드의 주석을 
+	 * 참고하기 바란다. 
 	 **/
 	@RequestMapping(value="/writeProcess", method=RequestMethod.POST)
 	public String insertBoard(Board board) {
@@ -226,10 +266,10 @@ public class BoardController {
 		 * redirect 접두어 뒤에 경로를 지정할 때 "/"로 시작하면 ContextRoot를
 		 * 기준으로 절대 경로 방식으로 Redirect 된다. "/"로 시작하지 않으면 현재 
 		 * 경로를 기준으로 상대 경로로 Redirect 된다. 또한 다른 사이트로 Redirect
-		 * 되기를 원한다면 "redirect:http://사이트 주소"를 지정하면 된다.
+		 * 되기를 원한다면 redirect:http://사이트 주소를 지정한다.
 		 **/		
 		return "redirect:boardList";
-	}
+	}	
 	
 	/* 게시 글 수정 폼 요청을 처리하는 메서드
 	 * 
@@ -248,13 +288,16 @@ public class BoardController {
 	 * 형 변환 할 수 없는 경우 400 에러를 발생 시킨다.
 	 * 
 	 * @RequestMapping 애노테이션이 적용된 메서드의 파라미터와 반환 타입에
-	 * 대한 설명은 setBoardService() 메서드 바로 아래에 있는 주석을 참고하고 
-	 * @RequestParam 애노테이션을 사용해 요청 파라미터를 읽어오는 방법은 
-	 * boardDetail() 메서드의 주석을 참고하기 바란다. 
+	 * 대한 설명과 @RequestParam에 대한 설명은 boardList() 메서드의 주석을 
+	 * 참고하기 바란다.
 	 **/
 	@RequestMapping(value="/update")
 	public String updateBoard(Model model, HttpServletResponse response, 
-			PrintWriter out, int no, String pass) {
+			PrintWriter out, int no, String pass,
+			@RequestParam(value="pageNum", required=false, defaultValue="1")int pageNum,
+			@RequestParam(value="type", required=false, defaultValue="null")String type,
+			@RequestParam(value="keyword", required=false, defaultValue="null")String keyword) 
+	{
 		
 		// BoardService 클래스를 이용해 게시판 테이블에서 비밀번호가 맞는지 체크한다. 
 		boolean result = boardService.isPassCheck(no, pass);
@@ -278,15 +321,23 @@ public class BoardController {
 			return null;
 		}
 		
-		/* Service 클래스를 이용해 게시 글 수정 폼에 출력할
-		 * no에 해당하는 게시 글을 가져온다. 
+		/* Service 클래스를 이용해 no에 해당하는 게시 글 하나의 정보를 읽어온다.
+		 * 두 번째 인수로 false를 지정해 게시 글 읽은 횟 수를 증가시키지 않는다. 
 		 **/
-		Board board = boardService.getBoard(no);
+		Board board = boardService.getBoard(no, false);
 		
 		/* 파라미터로 받은 모델 객체에 뷰로 보낼 모델을 저장한다.
 		 * 모델에는 도메인 객체나 비즈니스 로직을 처리한 결과를 저장한다. 
 		 **/
 		model.addAttribute("board", board);
+		model.addAttribute("pageNum", pageNum);
+		
+		boolean searchOption = type.equals("null")||keyword.equals("null")? false:true;
+		model.addAttribute("searchOption",searchOption);
+		if(searchOption) {
+			model.addAttribute("type",type);
+			model.addAttribute("keyword",keyword);
+		}
 		
 		/* servlet-context.xml에 설정한 ViewResolver에서 prefix와 suffix에
 		 * 지정한 정보를 제외한 뷰 이름을 문자열로 반환하면 된다.
@@ -303,7 +354,9 @@ public class BoardController {
 	 *
 	 * @RequestMapping 애노테이션이 적용된 Controller 메서드의 파라미터에
 	 * HttpServletResponse와 PrintWriter를 지정했고 요청 파라미터를 받을
-	 * Board 객체를 지정했다.
+	 * Board 객체를 지정했다. 또한 리다이렉트할 때 pageNum을 파라미터로 보내기
+	 * 위해서 RedirectAttributes 객체를 메서드의 파라미터로 지정했다.
+	 *  
 	 * 스프링은 폼으로부터 전달된 파라미터를 객체로 처리 할 수 있는 아래와 같은
 	 * 방법을 제공하고 있다. 아래와 같이 요청 파라미터를 전달받을 때 사용하는 
 	 * 객체를 커맨드 객체라고 부르며 이 커맨드 객체는 자바빈 규약에 따라 프로퍼티에
@@ -319,10 +372,19 @@ public class BoardController {
 	 * 또한 프로퍼티의 데이터 형에 맞게 적절히 형 변환 해 준다. 형 변환을 할 수 없는
 	 * 경우 스프링은 400 에러를 발생 시킨다. 예를 들면 프로퍼티가 정수형 일 때 매칭 되는
 	 * 값이 정수형으로 형 변환 할 수 없는 경우 400 에러를 발생 시킨다.
+	 *
+	 * @RequestMapping 애노테이션이 적용된 메서드의 파라미터와 반환 타입에
+	 * 대한 설명과 @RequestParam에 대한 설명은 boardList() 메서드의 주석을 
+	 * 참고하기 바란다.
 	 **/
 	@RequestMapping(value="update", method=RequestMethod.POST)
 	public String updateBoard(HttpServletResponse response, 
-			PrintWriter out, Board board) {
+			PrintWriter out, Board board,
+			RedirectAttributes reAttrs, 
+			@RequestParam(value="pageNum", required=false, defaultValue="1")int pageNum,
+			@RequestParam(value="type", required=false, defaultValue="null")String type,
+			@RequestParam(value="keyword", required=false, defaultValue="null")String keyword)
+	{
 	
 		// BoardService 클래스를 이용해 게시판 테이블에서 비밀번호가 맞는지 체크한다. 
 		boolean result = boardService.isPassCheck(board.getNo(), board.getPass());
@@ -355,8 +417,39 @@ public class BoardController {
 		 * redirect 접두어 뒤에 경로를 지정할 때 "/"로 시작하면 ContextRoot를
 		 * 기준으로 절대 경로 방식으로 Redirect 된다. "/"로 시작하지 않으면 현재 
 		 * 경로를 기준으로 상대 경로로 Redirect 된다. 또한 다른 사이트로 Redirect
-		 * 되기를 원한다면 "redirect:http://사이트 주소"를 지정하면 된다.
-		 **/	
+		 * 되기를 원한다면 redirect:http://사이트 주소를 지정한다.
+		 * 
+		 * Redirect 되는 경우 주소 끝에 파라미터를 지정해 GET방식의 파라미터로
+		 * 전송할 수 있지만 스프링프레임워크가 지원하는 RedirectAttributs객체를
+		 * 이용하면 한 번만 사용할 임시 데이터와 지속적으로 사용할 파라미터를 구분해
+		 * 지정할 수 있다.
+		 * 
+		 * 아래와 같이 RedirectAttributs의 addAttribute() 메서드를 사용해
+		 * 지속적으로 사용할 파라미터를 지정하면 자동으로 주소 뒤에 파라미터로
+		 * 추가되며 addFlashAttribute() 메서드를 사용해 파라미터로 지정하면
+		 * 한 번만 사용할 수 있도록 주소 뒤에 파라미터로 추가되지 않는다. 
+		 * addAttribute() 메서드를 사용해 파라미터로 지정한 데이터는 페이지를
+		 * 새로 고침해도 계속해서 주소 뒤에 파라미터로 남아있지만 addFlashAttribute()
+		 * 메서드를 사용해 지정한 파라미터는 사라지기 때문에 1회성으로 필요한
+		 * 데이터를 addFlashAttribute() 메서드를 사용해 지정하면 편리하다.
+		 * 
+		 * 파라미터에 한글이 포함되는 경우 URLEncoding을 코드로 구현해야 하지만
+		 * web.xml에서 스프링프레임워크가 지원하는 CharacterEncodingFilter를
+		 * 설정했기 때문에 Filter에 의해 UTF-8로 인코딩 되어 클라이언트로 응답된다.
+		 * 
+		 * 아래는 게시 글 리스트로 Redirect 되면서 같이 보내야할 pageNum을
+		 * RedirectAttributs를 이용해 파라미터로 전달하는 예이다. 
+		 **/
+		reAttrs.addAttribute("pageNum", pageNum);
+		//reAttrs.addFlashAttribute("test", "1회용 파라미터 받음 - test");
+		boolean searchOption = type.equals("null")||keyword.equals("null")? false:true;
+		
+		if(searchOption) {
+			
+			reAttrs.addAttribute("type", type);
+			reAttrs.addAttribute("keyword", keyword);
+			
+		}
 		return "redirect:boardList";
 	}
 	
@@ -367,23 +460,29 @@ public class BoardController {
 	 * 
 	 * @RequestMapping 애노테이션이 적용된 Controller 메서드의 파라미터에
 	 * HttpServletResponse와 PrintWriter를 지정했고 요청 파라미터를 받을
-	 * no와 pass도 지정했다. 이렇게 Controller 메서드의 파라미터에 필요한 
-	 * 객체나 요청 파라미터 이름과 동일한 이름의 파라미터를 지정하면 스프링이 자동으로
-	 * 설정해 준다. 만약 요청 파라미터와 메서드의 파라미터 이름이 다른 경우 Controller
-	 * 메서드의 파라미터 앞에 @RequestParam("요청 파라미터 이름")을 사용해
-	 * 요청 파라미터의 이름을 지정하면 스프링이 데이터 형에 맞게 적절히 형 변환까지
-	 * 해 준다. 형 변환을 할 수 없는 경우 스프링은 400 에러를 발생 시킨다. 예를 들면
-	 * Controller 메서드의 파라미터가 정수형 일 때 요청 파라미터의 값이 정수형으로
-	 * 형 변환 할 수 없는 경우 400 에러를 발생 시킨다.
+	 * no와 pass도 지정했다. 그리고 리다이렉트 할 때 pageNum을 파라미터로 보내기
+	 * 위해서 RedirectAttributes 객체를 메서드의 파라미터로 지정했다. 
+	 * 이렇게 Controller 메서드의 파라미터에 필요한 객체나 요청 파라미터 이름과 동일한
+	 * 이름의 파라미터를 지정하면 스프링이 자동으로 설정해 준다. 만약 요청 파라미터와
+	 * 메서드의 파라미터 이름이 다른 경우 Controller 메서드의 파라미터 앞에 
+	 * @RequestParam("요청 파라미터 이름")을 사용해 요청 파라미터의 이름을
+	 * 지정하면 스프링이 데이터 형에 맞게 적절히 형 변환까지 해 준다. 형 변환을 할 수
+	 * 없는 경우 스프링은 400 에러를 발생 시킨다. 예를 들면 Controller 메서드의
+	 * 파라미터가 정수형 일 때 요청 파라미터의 값이 정수형으로 형 변환 할 수 없는 
+	 * 경우 400 에러를 발생 시킨다.
 	 * 
 	 * @RequestMapping 애노테이션이 적용된 메서드의 파라미터와 반환 타입에
-	 * 대한 설명은 setBoardService() 메서드 바로 아래에 있는 주석을 참고하고 
-	 * @RequestParam 애노테이션을 사용해 요청 파라미터를 읽어오는 방법은 
-	 * boardDetail() 메서드의 주석을 참고하기 바란다. 
+	 * 대한 설명과 @RequestParam에 대한 설명은 boardList() 메서드의 주석을 
+	 * 참고하기 바란다.
 	 **/
 	@RequestMapping({"/delete", "deleteBoard"})
 	public String deleteBoard(HttpServletResponse response, 
-			PrintWriter out, int no, String pass) {
+			PrintWriter out, int no, String pass,
+			RedirectAttributes reAttrs, 
+			@RequestParam(value="pageNum", required=false, defaultValue="1")int pageNum,
+			@RequestParam(value="type", required=false, defaultValue="null")String type,
+			@RequestParam(value="keyword", required=false, defaultValue="null")String keyword) 
+	{
 		
 		// BoardService 클래스를 이용해 게시판 테이블에서 비밀번호가 맞는지 체크한다. 
 		boolean result = boardService.isPassCheck(no, pass);
@@ -416,9 +515,31 @@ public class BoardController {
 		 * redirect 접두어 뒤에 경로를 지정할 때 "/"로 시작하면 ContextRoot를
 		 * 기준으로 절대 경로 방식으로 Redirect 된다. "/"로 시작하지 않으면 현재 
 		 * 경로를 기준으로 상대 경로로 Redirect 된다. 또한 다른 사이트로 Redirect
-		 * 되기를 원한다면 "redirect:http://사이트 주소"를 지정하면 된다.
+		 * 되기를 원한다면 redirect:http://사이트 주소를 지정한다.
+		 * 
+		 * Redirect 되는 경우 주소 끝에 파라미터를 지정해 GET방식의 파라미터로
+		 * 전송할 수 있지만 스프링프레임워크가 지원하는 RedirectAttributs객체를
+		 * 이용하면 한 번만 사용할 임시 데이터와 지속적으로 사용할 파라미터를 구분해
+		 * 지정할 수 있다.
+		 * 
+		 * 아래와 같이 RedirectAttributs의 addAttribute() 메서드를 사용해
+		 * 지속적으로 사용할 파라미터를 지정하면 자동으로 주소 뒤에 파라미터로
+		 * 추가되며 addFlashAttribute() 메서드를 사용해 파라미터로 지정하면
+		 * 한 번만 사용할 수 있도록 주소 뒤에 파라미터로 추가되지 않는다. 
+		 * addAttribute() 메서드를 사용해 파라미터로 지정한 데이터는 페이지를
+		 * 새로 고침해도 계속해서 주소 뒤에 파라미터로 남아있지만 addFlashAttribute()
+		 * 메서드를 사용해 지정한 파라미터는 사라지기 때문에 1회성으로 필요한
+		 * 데이터를 addFlashAttribute() 메서드를 사용해 지정하면 편리하다.
+		 * 
+		 * 파라미터에 한글이 포함되는 경우 URLEncoding을 코드로 구현해야 하지만
+		 * web.xml에서 스프링프레임워크가 지원하는 CharacterEncodingFilter를
+		 * 설정했기 때문에 Filter에 의해 UTF-8로 인코딩 되어 클라이언트로 응답된다.
+		 * 
+		 * 아래는 게시 글 리스트로 Redirect 되면서 같이 보내야할 pageNum을
+		 * RedirectAttributs를 이용해 파라미터로 전달하는 예이다. 
 		 **/
+		reAttrs.addAttribute("pageNum", pageNum);		
+		//reAttrs.addFlashAttribute("test", "1회용 파라미터 받음 - test");
 		return "redirect:boardList";
-	}
-	
+	}	
 }
